@@ -2,6 +2,7 @@
 
 #include <cstring> // For strcmp
 #include <iostream>
+#include <map> // For ranking devices (optional)
 #include <set> // For checking validation layer support efficiently
 #include <stdexcept>
 #include <string> // Include for std::to_string
@@ -71,6 +72,227 @@ void HelloTriangleApplication::initVulkan()
 {
   createInstance();
   setupDebugMessenger(); // Setup messenger after instance creation
+  createSurface();       // Create surface after instance
+  pickPhysicalDevice();  // Pick GPU after surface creation
+  createLogicalDevice(); // Create logical device using chosen physical device
+}
+
+void HelloTriangleApplication::createSurface()
+{
+  // Use GLFW function to create platform-agnostic surface
+  VkResult result = glfwCreateWindowSurface(_instance, _window, nullptr, &_surface);
+  if (result != VK_SUCCESS)
+  {
+    throw std::runtime_error("Failed to create window surface! Error code: " +
+                             std::to_string(result));
+  }
+  std::cout << "Vulkan window surface created successfully." << std::endl;
+}
+
+void HelloTriangleApplication::pickPhysicalDevice()
+{
+  uint32_t deviceCount = 0;
+  vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
+
+  if (deviceCount == 0)
+  {
+    throw std::runtime_error("Failed to find GPUs with Vulkan support!");
+  }
+
+  std::vector<VkPhysicalDevice> devices(deviceCount);
+  vkEnumeratePhysicalDevices(_instance, &deviceCount, devices.data());
+
+  std::cout << "Available physical devices (" << deviceCount << ") :" << std::endl;
+
+  // Optional: Use a map to store candidate devices and their scores
+  // std::multimap<int, VkPhysicalDevice> candidates;
+
+  for (const auto& device : devices)
+  {
+     VkPhysicalDeviceProperties properties;
+     vkGetPhysicalDeviceProperties(device, &properties);
+     std::cout << "\t" << properties.deviceName;
+
+    if (isDeviceSuitable(device))
+    {
+      _physicalDevice = device;
+      std::cout << " (Selected)" << std::endl;
+      break; // Pick the first suitable device
+    }
+    std::cout << std::endl;
+  }
+
+  if (_physicalDevice == VK_NULL_HANDLE)
+  {
+    throw std::runtime_error("Failed to find a suitable GPU!");
+  }
+}
+
+bool HelloTriangleApplication::isDeviceSuitable(VkPhysicalDevice device)
+{
+  QueueFamilyIndices indices = findQueueFamilies(device);
+
+  bool extensionsSupported = checkDeviceExtensionSupport(device);
+
+  // Add more checks here later (e.g., swap chain adequacy, features)
+
+  return indices.isComplete() && extensionsSupported;
+}
+
+QueueFamilyIndices HelloTriangleApplication::findQueueFamilies(VkPhysicalDevice device)
+{
+  QueueFamilyIndices indices;
+
+  uint32_t queueFamilyCount = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+  std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+  int i = 0;
+  for (const auto& queueFamily : queueFamilies)
+  {
+    // Check for graphics support
+    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+    {
+      indices.graphicsFamily = i;
+    }
+
+    // Check for presentation support (needs the surface)
+    VkBool32 presentSupport = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, _surface, &presentSupport);
+    if (presentSupport)
+    {
+      indices.presentFamily = i;
+    }
+
+    if (indices.isComplete())
+    {
+      break;
+    }
+
+    i++;
+  }
+
+  return indices;
+}
+
+bool HelloTriangleApplication::checkDeviceExtensionSupport(VkPhysicalDevice device)
+{
+  uint32_t extensionCount;
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+  std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+  std::set<std::string> requiredDevExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
+  // --- Check for MoltenVK Portability Subset Extension --- 
+  // This is needed on macOS/iOS if the device requires it.
+  bool requiresPortabilitySubset = false;
+  for (const auto& extension : availableExtensions) {
+      if (strcmp(extension.extensionName, "VK_KHR_portability_subset") == 0) {
+          requiresPortabilitySubset = true;
+          requiredDevExtensions.insert("VK_KHR_portability_subset");
+          std::cout << " [Device requires VK_KHR_portability_subset] ";
+          break;
+      }
+  }
+  // --------------------------------------------------------
+
+  // Check if all required extensions are available
+  for (const auto& extension : availableExtensions)
+  {
+    requiredDevExtensions.erase(extension.extensionName);
+  }
+
+  return requiredDevExtensions.empty();
+}
+
+void HelloTriangleApplication::createLogicalDevice()
+{
+  QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
+
+  std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+  std::set<uint32_t> uniqueQueueFamilies = {
+      indices.graphicsFamily.value(), 
+      indices.presentFamily.value()
+  };
+
+  float queuePriority = 1.0f;
+  for (uint32_t queueFamily : uniqueQueueFamilies)
+  {
+    VkDeviceQueueCreateInfo queueCreateInfo{};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = queueFamily;
+    queueCreateInfo.queueCount = 1;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+    queueCreateInfos.push_back(queueCreateInfo);
+  }
+
+  // Specify device features we want to use (none for now)
+  VkPhysicalDeviceFeatures deviceFeatures{};
+
+  // Create the logical device
+  VkDeviceCreateInfo createInfo{};
+  createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+  createInfo.pQueueCreateInfos = queueCreateInfos.data();
+  createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+  createInfo.pEnabledFeatures = &deviceFeatures;
+
+  // --- Enable required device extensions --- 
+  std::vector<const char*> requiredDevExtensions = deviceExtensions;
+  // Add portability subset if required by the physical device
+  if (checkDeviceExtensionSupport(_physicalDevice)) { // Re-check to see if portability needed
+       // Check if portability was added during checkDeviceExtensionSupport
+      uint32_t extCount;
+      vkEnumerateDeviceExtensionProperties(_physicalDevice, nullptr, &extCount, nullptr);
+      std::vector<VkExtensionProperties> availableExts(extCount);
+      vkEnumerateDeviceExtensionProperties(_physicalDevice, nullptr, &extCount, availableExts.data());
+      for (const auto& ext : availableExts) {
+          if (strcmp(ext.extensionName, "VK_KHR_portability_subset") == 0) {
+              bool already_added = false;
+              for(const char* req_ext : requiredDevExtensions) {
+                  if(strcmp(req_ext, "VK_KHR_portability_subset") == 0) {
+                      already_added = true;
+                      break;
+                  }
+              }
+              if(!already_added) {
+                 requiredDevExtensions.push_back("VK_KHR_portability_subset");
+              }
+              break;
+          }
+      }
+  }
+  createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDevExtensions.size());
+  createInfo.ppEnabledExtensionNames = requiredDevExtensions.data();
+  // -----------------------------------------
+
+  // Link to device-level validation layers (consistent with instance layers)
+  if (enableValidationLayers)
+  {
+    createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+    createInfo.ppEnabledLayerNames = validationLayers.data();
+  }
+  else
+  {
+    createInfo.enabledLayerCount = 0;
+  }
+
+  // Create the logical device
+  VkResult result = vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device);
+  if (result != VK_SUCCESS)
+  {
+    throw std::runtime_error("Failed to create logical device! Error code: " +
+                             std::to_string(result));
+  }
+  std::cout << "Vulkan logical device created successfully." << std::endl;
+
+  // Get queue handles (we only requested one queue from each family)
+  vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0, &_graphicsQueue);
+  vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &_presentQueue);
+  std::cout << "Graphics and present queue handles obtained." << std::endl;
 }
 
 void HelloTriangleApplication::createInstance()
@@ -92,33 +314,26 @@ void HelloTriangleApplication::createInstance()
   createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   createInfo.pApplicationInfo = &appInfo;
 
-  // Get required extensions (now uses helper function)
   auto extensions = getRequiredExtensions();
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames = extensions.data();
 
-  // Enable validation layers if requested
-  VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{}; // Need this outside the if for potential use in createInfo.pNext
+  VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
   if (enableValidationLayers)
   {
     createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
     createInfo.ppEnabledLayerNames = validationLayers.data();
-
-    // Populate debug messenger create info structure (for setupDebugMessenger later)
     populateDebugMessengerCreateInfo(debugCreateInfo);
-    // createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo; // Optionally log instance creation/destruction
+    // createInfo.pNext = &debugCreateInfo; // Only if logging instance creation
   }
   else
   {
     createInfo.enabledLayerCount = 0;
-    createInfo.ppEnabledLayerNames = nullptr;
     createInfo.pNext = nullptr;
   }
 
-  // MoltenVK Portability Flag
   createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 
-  // Create the instance
   VkResult result = vkCreateInstance(&createInfo, nullptr, &_instance);
   if (result != VK_SUCCESS)
   {
@@ -131,25 +346,21 @@ void HelloTriangleApplication::createInstance()
 void HelloTriangleApplication::setupDebugMessenger()
 {
   if (!enableValidationLayers) return;
-
   VkDebugUtilsMessengerCreateInfoEXT createInfo;
   populateDebugMessengerCreateInfo(createInfo);
-
   VkResult result = CreateDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger);
   if (result != VK_SUCCESS)
   {
-    throw std::runtime_error("Failed to set up debug messenger! Error code: " +
+     throw std::runtime_error("Failed to set up debug messenger! Error code: " +
                              std::to_string(result));
   }
-  std::cout << "Vulkan debug messenger created successfully." << std::endl;
+   std::cout << "Vulkan debug messenger created successfully." << std::endl;
 }
-
 
 bool HelloTriangleApplication::checkValidationLayerSupport()
 {
   uint32_t layerCount;
   vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
   std::vector<VkLayerProperties> availableLayers(layerCount);
   vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
@@ -157,21 +368,20 @@ bool HelloTriangleApplication::checkValidationLayerSupport()
   std::set<std::string> availableLayerNames;
   for (const auto& layerProperties : availableLayers)
   {
-      std::cout << "\t" << layerProperties.layerName << std::endl;
-      availableLayerNames.insert(layerProperties.layerName);
+    std::cout << "\t" << layerProperties.layerName << std::endl;
+    availableLayerNames.insert(layerProperties.layerName);
   }
 
   std::cout << "Required validation layers:" << std::endl;
   for (const char* layerName : validationLayers)
   {
-     std::cout << "\t" << layerName << std::endl;
+    std::cout << "\t" << layerName << std::endl;
     if (availableLayerNames.find(layerName) == availableLayerNames.end())
     {
       std::cerr << "ERROR: Required layer " << layerName << " not found!" << std::endl;
       return false;
     }
   }
-
   return true;
 }
 
@@ -179,30 +389,24 @@ std::vector<const char*> HelloTriangleApplication::getRequiredExtensions()
 {
   uint32_t glfwExtensionCount = 0;
   const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
   if (glfwExtensions == nullptr)
   {
     throw std::runtime_error("GLFW required extensions unavailable.");
   }
-
   std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-  // Add MoltenVK portability extensions
   extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
   extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
-  // Add Debug Utils extension if validation layers are enabled
   if (enableValidationLayers)
   {
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
 
-  // You could print the required extensions here for debugging
   std::cout << "Required instance extensions:" << std::endl;
   for (const auto& ext : extensions) {
       std::cout << "\t" << ext << std::endl;
   }
-
   return extensions;
 }
 
@@ -252,7 +456,20 @@ void HelloTriangleApplication::mainLoop()
 
 void HelloTriangleApplication::cleanup()
 {
-  // Destroy debug messenger BEFORE the instance
+  // Destroy logical device first
+  if (_device != VK_NULL_HANDLE)
+  {
+    vkDestroyDevice(_device, nullptr);
+    std::cout << "Vulkan logical device destroyed." << std::endl;
+  }
+
+  // Destroy surface BEFORE instance
+  if (_surface != VK_NULL_HANDLE)
+  {
+      vkDestroySurfaceKHR(_instance, _surface, nullptr);
+      std::cout << "Vulkan surface destroyed." << std::endl;
+  }
+
   if (enableValidationLayers && _debugMessenger != VK_NULL_HANDLE)
   {
     DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
