@@ -10,7 +10,12 @@ find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 
-add_executable(CppTestApp src/main.cpp)
+# Add source files to the executable
+add_executable(CppTestApp
+  src/main.cpp
+  src/HelloTriangleApplication.cpp
+  # Add other .cpp files here later
+)
 
 # Link libraries
 target_link_libraries(CppTestApp PRIVATE Vulkan::Vulkan glfw glm::glm)
