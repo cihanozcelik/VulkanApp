@@ -1,48 +1,37 @@
 #pragma once
 
 #include <memory> // For std::unique_ptr
-#include <vector> // For shader code buffer
+// Removed <vector> and vulkan includes if not directly needed by Application
 
-// Needed for VkRenderPass handle
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
-// Forward declarations to avoid including full headers here
+// Forward declarations
 class Window;
 class VulkanInstance;
 class VulkanDevice;
 class VulkanSwapChain;
 
+// Forward declare Renderer instead of including the full header
+namespace VulkanApp::Rendering { class Renderer; }
+
 class Application
 {
 public:
-  Application();
-  ~Application(); // Default destructor is likely fine with unique_ptr
+    Application();
+    ~Application();
 
-  void run();
+    void Run(); // Renamed for consistency maybe?
 
 private:
-  void init();
-  void mainLoop();
-  void cleanup(); // Cleanup might be minimal due to RAII
+    void InitWindow();
+    void InitVulkan(); // Will initialize core Vulkan + Renderer
+    void MainLoop();
+    void Cleanup();
 
-  void createRenderPass(); // Add render pass creation method
-  void createGraphicsPipeline(); // New method for pipeline setup
+    // Order matters for initialization and destruction!
+    std::unique_ptr<Window> _window;
+    std::unique_ptr<VulkanInstance> _vulkanInstance;
+    std::unique_ptr<VulkanDevice> _vulkanDevice;
+    std::unique_ptr<VulkanSwapChain> _vulkanSwapChain;
+    std::unique_ptr<VulkanApp::Rendering::Renderer> _renderer; // Added Renderer
 
-  // Helper for shader loading
-  static std::vector<char> readFile(const std::string& filename);
-  VkShaderModule createShaderModule(const std::vector<char>& code);
-
-  // Order matters for initialization and destruction!
-  std::unique_ptr<Window> _window;
-  std::unique_ptr<VulkanInstance> _vulkanInstance;
-  std::unique_ptr<VulkanDevice> _vulkanDevice;
-  std::unique_ptr<VulkanSwapChain> _vulkanSwapChain;
-  
-  // Vulkan objects managed here (or potentially in a dedicated Renderer class later)
-  VkRenderPass _renderPass = VK_NULL_HANDLE;
-  VkPipelineLayout _pipelineLayout = VK_NULL_HANDLE;
-  VkPipeline _graphicsPipeline = VK_NULL_HANDLE;
-
-  // Add other components like Renderer, Pipeline Cache etc. later
+    // No longer owns render pass, pipeline, etc.
 }; 

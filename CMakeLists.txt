@@ -25,6 +25,7 @@ add_executable(VulkanApp
   src/vulkan/VulkanInstance.cpp
   src/vulkan/VulkanDevice.cpp
   src/vulkan/VulkanSwapChain.cpp
+  src/rendering/Renderer.cpp
   # Add other .cpp files here later
 )
 
