@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory> // For std::unique_ptr
+#include <vector> // For shader code buffer
 
 // Needed for VkRenderPass handle
 #define GLFW_INCLUDE_VULKAN
@@ -26,6 +27,11 @@ private:
   void cleanup(); // Cleanup might be minimal due to RAII
 
   void createRenderPass(); // Add render pass creation method
+  void createGraphicsPipeline(); // New method for pipeline setup
+
+  // Helper for shader loading
+  static std::vector<char> readFile(const std::string& filename);
+  VkShaderModule createShaderModule(const std::vector<char>& code);
 
   // Order matters for initialization and destruction!
   std::unique_ptr<Window> _window;
@@ -35,6 +41,8 @@ private:
   
   // Vulkan objects managed here (or potentially in a dedicated Renderer class later)
   VkRenderPass _renderPass = VK_NULL_HANDLE;
+  VkPipelineLayout _pipelineLayout = VK_NULL_HANDLE;
+  VkPipeline _graphicsPipeline = VK_NULL_HANDLE;
 
   // Add other components like Renderer, Pipeline Cache etc. later
 }; 
