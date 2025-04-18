@@ -1,4 +1,4 @@
-#include "HelloTriangleApplication.h"
+#include "core/Application.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -6,16 +6,25 @@
 
 int main()
 {
-  HelloTriangleApplication app;
+  // Create the main application object
+  Application app;
 
   try
   {
+    // Run the application
     app.run();
   }
   catch (const std::exception& e)
   {
-    std::cerr << "ERROR: " << e.what() << std::endl;
+    // Catch and report any standard exceptions
+    std::cerr << "FATAL ERROR: " << e.what() << std::endl;
     return EXIT_FAILURE;
+  }
+  catch (...)
+  {
+      // Catch any other unknown exceptions
+      std::cerr << "FATAL ERROR: Unknown exception caught!" << std::endl;
+      return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;
