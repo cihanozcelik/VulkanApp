@@ -37,9 +37,11 @@ By providing closer access to the hardware, Vulkan enables developers to push pe
     *   Meshes
     *   Materials / Shaders
     *   ...and related engine systems.
-4.  **Cross-Platform Aim:** While initially developed on macOS using MoltenVK, design the core C++ structure with cross-platform compatibility in mind for potential future ports to Windows or Linux.
+4.  **Cross-Platform Architecture:** Design the core C++ structure with cross-platform compatibility in mind for potential future ports to Windows or Linux. (**Note:** The current implementation is macOS-focused.)
 
 ## Setup and Building
+
+**Current Platform Focus:** This project is currently developed and tested primarily on **macOS** using **MoltenVK** (Vulkan on Metal). While prerequisites for other platforms are listed, the code may require minor modifications (e.g., conditional compilation for portability extensions/flags) to compile and run correctly on Windows or Linux with native Vulkan drivers.
 
 ### Prerequisites
 
@@ -55,15 +57,15 @@ Before building, ensure you have the following installed:
     *   **Windows:** Download from [cmake.org](https://cmake.org/download/).
 3.  **Vulkan SDK:** Provides headers, validation layers, shader compiler (`glslc`), etc.
     *   **All Platforms:** Download and install from the LunarG website: [https://vulkan.lunarg.com/](https://vulkan.lunarg.com/)
-    *   **macOS Specific:** Ensure the SDK installer sets up environment variables (like `VULKAN_SDK`) or source the `setup-env.sh` script in your shell profile (e.g., add `source /path/to/your/sdk/setup-env.sh` to `~/.zshrc` or `~/.bash_profile`).
+    *   **macOS Specific:** The Vulkan SDK for macOS includes MoltenVK. Ensure the SDK installer sets up environment variables (like `VULKAN_SDK`) or source the `setup-env.sh` script in your shell profile (e.g., add `source /path/to/your/sdk/setup-env.sh` to `~/.zshrc` or `~/.bash_profile`). The code currently depends on MoltenVK's portability features.
 4.  **GLFW:** Windowing and input library.
     *   **macOS:** `brew install glfw`
-    *   **Linux:** `sudo apt install libglfw3-dev` (Debian/Ubuntu) or equivalent.
-    *   **Windows:** Download pre-compiled binaries or source from [glfw.org](https://www.glfw.org/download.html) and configure CMake to find them (using `-DGLFW_DIR=...` or setting `glfw3_DIR`).
+    *   **Linux:** `sudo apt install libglfw3-dev` (Debian/Ubuntu) or equivalent. *(Note: Code adjustments may be needed for instance extensions)*.
+    *   **Windows:** Download pre-compiled binaries or source from [glfw.org](https://www.glfw.org/download.html) and configure CMake to find them. *(Note: Code adjustments may be needed for instance extensions)*.
 5.  **GLM:** Math library (header-only).
     *   **macOS:** `brew install glm`
     *   **Linux:** `sudo apt install libglm-dev` (Debian/Ubuntu) or equivalent.
-    *   **Windows:** Download from [glm.g-truc.net](https://glm.g-truc.net/0.9.9/index.html) and ensure headers are findable by CMake (e.g., add to system include path or use `CMAKE_PREFIX_PATH`).
+    *   **Windows:** Download from [glm.g-truc.net](https://glm.g-truc.net/0.9.9/index.html) and ensure headers are findable by CMake.
 
 ### Building the Project
 
@@ -84,9 +86,9 @@ Before building, ensure you have the following installed:
     cmake --build . 
     # Or specify config for multi-config generators: cmake --build . --config Release
     ```
-4.  **Run:** The executable will be placed in the `build/bin` directory (if using the provided CMake setup) or directly in `build` depending on the generator.
+4.  **Run:** The executable (`VulkanApp`) will be placed in the `build` directory.
     ```bash
-    ./VulkanApp # (Or ./bin/VulkanApp depending on CMake output dirs)
+    ./VulkanApp
     ```
 
 ## Vulkan Cross-Platform Capabilities
@@ -98,7 +100,7 @@ Vulkan achieves cross-platform support through:
 3.  **Hardware Vendors:** GPU vendors (NVIDIA, AMD, Intel, etc.) provide Vulkan drivers for their hardware on supported operating systems.
 4.  **Translation Layers (Optional):** For platforms that don't natively support Vulkan (like macOS/iOS), translation layers like MoltenVK (Vulkan on Metal) or DXVK (Vulkan on DirectX) can be used.
 
-This project initially uses MoltenVK for macOS development but aims to structure the core logic to facilitate easier porting by isolating platform-specific WSI code when necessary.
+This project currently uses MoltenVK and includes necessary portability extensions/flags for macOS development. Adapting for native Vulkan drivers on other platforms would require conditional compilation for certain instance extensions/flags.
 
 ## Current Status
 
