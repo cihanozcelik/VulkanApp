@@ -12,7 +12,7 @@ int main()
   try
   {
     // Run the application
-    app.run();
+    app.Run();
   }
   catch (const std::exception& e)
   {

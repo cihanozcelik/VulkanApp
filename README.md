@@ -102,20 +102,44 @@ Vulkan achieves cross-platform support through:
 
 This project currently uses MoltenVK and includes necessary portability extensions/flags for macOS development. Adapting for native Vulkan drivers on other platforms would require conditional compilation for certain instance extensions/flags.
 
-## Current Status
+## Current Status (April 18, 2025)
 
-*   Basic project setup with CMake.
-*   GLFW window creation.
-*   Vulkan Instance, Device (Physical/Logical), Surface, and Swap Chain setup.
-*   Validation Layers and Debug Messenger enabled.
-*   Code structure refactored for Single Responsibility Principle (SRP).
-*   Render Pass created.
+*   **Core Vulkan Setup:**
+    *   Instance, Physical/Logical Device selection.
+    *   Window Surface integration (via GLFW).
+    *   Swap Chain and Image View creation.
+    *   Validation Layers & Debug Messenger.
+*   **Rendering Pipeline:**
+    *   Render Pass definition.
+    *   Graphics Pipeline created (basic, fixed function + shaders).
+    *   Framebuffers linked to Swap Chain Image Views.
+    *   Pipeline Layout (currently empty).
+*   **Shaders:**
+    *   Basic Vertex and Fragment shaders (hardcoded triangle).
+    *   SPIR-V compilation automated via CMake (`glslc`).
+    *   Shader Module loading.
+*   **Command Buffers & Synchronization:**
+    *   Command Pool created.
+    *   Command Buffers allocated (one per frame in flight).
+    *   Synchronization primitives (Semaphores & Fences) created.
+*   **Drawing:**
+    *   Main loop implemented (`Application::MainLoop`).
+    *   Frame acquisition, command buffer recording (`vkCmdDraw`), submission, and presentation logic (`Renderer::DrawFrame`).
+    *   **RESULT:** A hardcoded triangle is successfully rendered to the screen!
+*   **Code Structure:**
+    *   Core components separated (Application, Window, VulkanInstance, VulkanDevice, VulkanSwapChain).
+    *   Rendering logic encapsulated in a dedicated `Renderer` class (`src/rendering/`).
 
-## Next Steps
+## Next Steps / Roadmap
 
-*   Implement the Graphics Pipeline.
-*   Load basic shaders.
-*   Create framebuffers.
-*   Set up command pools and buffers.
-*   Implement basic rendering loop with synchronization.
-*   Draw the first triangle! 
+*   **Vertex Buffers:** Load geometry data from CPU to GPU memory.
+*   **Index Buffers:** Efficiently draw indexed geometry.
+*   **Uniform Buffers:** Pass transformation matrices (MVP) or other data to shaders.
+*   **Camera System:** Implement basic camera controls (view/projection matrices).
+*   **Input Handling:** Process keyboard/mouse input via GLFW.
+*   **Texture Mapping:** Load and sample textures in shaders.
+*   **Refactoring & Abstractions:**
+    *   Introduce concepts like `Mesh`, `Material`, `Shader` classes.
+    *   Potentially explore `Scene`, `GameObject`, `Component` structure.
+*   **Error Handling & Robustness:** Improve swap chain recreation on resize, add more checks.
+*   **(Further Out):** Depth Buffering, Lighting, Model Loading, GUI (ImGui?), etc. 
