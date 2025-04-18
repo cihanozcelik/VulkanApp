@@ -104,6 +104,8 @@ This project currently uses MoltenVK and includes necessary portability extensio
 
 ## Current Status (April 18, 2025)
 
+![Current Render Output](docs/images/triangles.png)
+
 *   **Core Vulkan Setup:**
     *   Instance, Physical/Logical Device selection.
     *   Window Surface integration (via GLFW).
